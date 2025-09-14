@@ -1,0 +1,1578 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kule Komutanı</title>
+    <style>
+        /* Genel Sıfırlamalar ve Temel Stiller */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #002a40 0%, #2ca7e4 100%);
+            color: white;
+            overflow: hidden; /* Sayfa kaydırmasını engeller */
+        }
+
+        /* Oyun Konteyneri - Tam Ekran ve Flex Düzeni */
+        .game-container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+            display: flex; /* Oyun tahtası ve kenar çubuğunu yan yana yerleştirir */
+        }
+
+        /* Oyun Tahtası - Izgara Temelli Alan */
+        .game-board {
+            width: 1000px; /* 20 sütun x 50px */
+            height: 500px; /* 10 satır x 50px */
+            position: relative;
+            background: linear-gradient(45deg, #2d4a22 0%, #8fbc8f 50%, #2d4a22 100%);
+            background-size: 50px 50px;
+            background-image:
+                radial-gradient(circle at 25px 25px, rgba(255,255,255,0.1) 2px, transparent 2px);
+            margin: auto;
+            align-self: center;
+        }
+
+        /* Yolun Görsel Temsili */
+        .path {
+            position: absolute;
+            background: linear-gradient(90deg, #f7b42c 0%, #fc575e 100%);
+            border-radius: 16px;
+            box-shadow: 0 0 18px 2px #fc575e55, 0 2px 12px 0 rgba(0,0,0,0.18);
+            z-index: 1;
+            opacity: 0.85;
+        }
+
+        /* Izgara Hücresi (Kule Yerleştirme Alanları) */
+        .grid-cell {
+            position: absolute;
+            width: 50px;
+            height: 50px;
+            border: 1.5px solid rgba(255,255,255,0.12);
+            border-radius: 12px;
+            background: linear-gradient(135deg, #3a5d2c 0%, #6bbf59 100%);
+            box-shadow: 0 2px 8px 0 rgba(0,0,0,0.10);
+            transition: box-shadow 0.25s, border-color 0.25s, background 0.25s;
+            cursor: pointer;
+            z-index: 5;
+            opacity: 0.92;
+        }
+
+        .grid-cell:hover {
+            background: linear-gradient(135deg, #6bbf59 0%, #a8e063 100%);
+            border-color: #a8e063;
+            box-shadow: 0 0 18px 2px #a8e06399, 0 2px 12px 0 rgba(0,0,0,0.18);
+            opacity: 1;
+        }
+
+        /* Kuleler */
+        .tower {
+            position: absolute;
+            width: 50px; /* gridSize değeriyle aynı */
+            height: 50px; /* gridSize değeriyle aynı */
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            animation: towerPulse 2s infinite; /* Hafif nabız efekti */
+            z-index: 10;
+        }
+
+        @keyframes towerPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        /* Kule Tiplerinin Renkleri */
+        .tower-archer {
+            background: radial-gradient(circle, #ff6b6b, #ee5a24);
+            border: 3px solid #c44569;
+        }
+
+        .tower-mage {
+            background: radial-gradient(circle, #4834d4, #686de0);
+            border: 3px solid #30336b;
+        }
+
+        .tower-cannon {
+            background: radial-gradient(circle, #f0932b, #eb4d4b);
+            border: 3px solid #6f1e51;
+        }
+
+        .tower-ice {
+            background: radial-gradient(circle, #00d2d3, #01a3a4);
+            border: 3px solid #006ba6;
+        }
+
+        /* Kule Eylemleri Menüsü (Yükselt, Sat) */
+        .tower-actions {
+            position: absolute;
+            background: rgba(44, 62, 80, 0.9);
+            border-radius: 8px;
+            padding: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            z-index: 20; /* Her şeyin üzerinde olsun */
+        }
+
+        .action-button {
+            padding: 8px 15px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            color: white;
+            transition: background-color 0.2s ease, transform 0.2s ease;
+        }
+
+        .action-button:hover {
+            transform: translateY(-2px); /* Hafif yukarı kalkma efekti */
+        }
+
+        .upgrade-button {
+            background: linear-gradient(45deg, #2ecc71, #27ae60);
+        }
+
+        .upgrade-button:disabled {
+            background: #7f8c8d;
+            cursor: not-allowed;
+        }
+
+        .sell-button {
+            background: linear-gradient(45deg, #e74c3c, #c0392b);
+        }
+
+        /* Düşmanlar */
+        .enemy {
+            position: absolute;
+            width: 35px; /* Düşman boyutu */
+            height: 35px; /* Düşman boyutu */
+            border-radius: 50%;
+            transition: all 0.05s linear; /* Daha yumuşak hareket için */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            animation: enemyMove 0.5s infinite alternate; /* Hafif yukarı-aşağı hareket */
+            z-index: 8;
+        }
+
+        @keyframes enemyMove {
+            0% { transform: translateY(0px); }
+            100% { transform: translateY(-3px); }
+        }
+
+        /* Yeni Düşman Tiplerinin Stilleri */
+        .enemy-goblin {
+            background: radial-gradient(circle, #8bc34a, #4caf50);
+            border: 2px solid #388e3c;
+            font-size: 16px;
+            width: 30px;
+            height: 30px;
+        }
+
+        .enemy-orc {
+            background: radial-gradient(circle, #ff9800, #fb8c00);
+            border: 2px solid #f57c00;
+            font-size: 18px;
+        }
+
+        .enemy-troll {
+            background: radial-gradient(circle, #607d8b, #455a64);
+            border: 2px solid #263238;
+            font-size: 20px;
+            width: 40px;
+            height: 40px;
+        }
+
+        .enemy-shadow {
+            background: radial-gradient(circle, #9c27b0, #7b1fa2);
+            border: 2px solid #4a148c;
+            font-size: 18px;
+            filter: brightness(1.2);
+        }
+
+        .enemy-golem {
+            background: radial-gradient(circle, #795548, #5d4037);
+            border: 2px solid #3e2723;
+            font-size: 22px;
+            width: 50px;
+            height: 50px;
+        }
+
+        /* Mermiler */
+        .projectile {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #ffeb3b;
+            box-shadow: 0 0 10px #ffeb3b;
+            animation: projectileGlow 0.3s infinite alternate; /* Parlama efekti */
+            z-index: 12;
+        }
+
+        @keyframes projectileGlow {
+            0% { box-shadow: 0 0 5px #ffeb3b; }
+            100% { box-shadow: 0 0 15px #ffeb3b, 0 0 25px #ffeb3b; }
+        }
+
+        /* Kenar Çubuğu (UI Paneli) */
+        .sidebar {
+            width: 280px; /* Sabit genişlik */
+            background: linear-gradient(180deg, #2c3e50 0%, #34495e 100%);
+            padding: 20px;
+            border-left: 3px solid #3498db;
+            overflow-y: auto; /* İçerik taşarsa kaydırma çubuğu */
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between; /* İçerikleri dikeyde yayar */
+        }
+
+        .sidebar h2 {
+            color: #3498db;
+            margin-bottom: 20px;
+            text-align: center;
+            font-size: 24px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+
+        /* İstatistik Paneli */
+        .stats-panel, .tower-shop, .game-controls, .player-status {
+            background: rgba(0,0,0,0.3);
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(52, 152, 219, 0.3);
+        }
+
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            padding: 5px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .stat-value {
+            font-weight: bold;
+            color: #3498db;
+        }
+
+        /* Kule Mağazası Butonları */
+        .tower-shop h3 {
+            color: #3498db;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .tower-button {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 10px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            color: white; /* Metin rengi varsayılan olarak beyaz */
+        }
+
+        /* Buton üzerine gelince parlama efekti */
+        .tower-button:before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        .tower-button:hover:before {
+            left: 100%;
+        }
+
+        /* Kule Butonu Renkleri */
+        .tower-button.archer { background: linear-gradient(45deg, #ff6b6b, #ee5a24); }
+        .tower-button.mage { background: linear-gradient(45deg, #4834d4, #686de0); }
+        .tower-button.cannon { background: linear-gradient(45deg, #f0932b, #eb4d4b); }
+        .tower-button.ice { background: linear-gradient(45deg, #00d2d3, #01a3a4); }
+
+        .tower-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+        }
+
+        .tower-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Oyun Kontrol Butonları */
+        .game-controls .control-button {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 10px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            color: white; /* Metin rengi varsayılan olarak beyaz */
+        }
+
+        .start-wave { background: linear-gradient(45deg, #27ae60, #2ecc71); }
+        .pause-game { background: linear-gradient(45deg, #f39c12, #e67e22); }
+        .control-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+        }
+
+
+        /* Düşman Sağlık Çubuğu */
+        .health-bar {
+            position: absolute;
+            bottom: -15px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 30px;
+            height: 5px;
+            background: rgba(0,0,0,0.5);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .health-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #e74c3c, #c0392b);
+            transition: width 0.1s linear;
+            border-radius: 3px;
+        }
+
+        /* Patlama Efekti */
+        .explosion {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: radial-gradient(circle, #ff6b35, #f7931e);
+            animation: explode 0.6s ease-out forwards;
+            pointer-events: none; /* Tıklanabilir olmasın */
+            z-index: 15;
+        }
+
+        @keyframes explode {
+            0% { transform: scale(0); opacity: 1; }
+            100% { transform: scale(3); opacity: 0; }
+        }
+
+        /* Hasar Metni Efekti */
+        .damage-text {
+            position: absolute;
+            color: #ff6b35;
+            font-weight: bold;
+            font-size: 18px;
+            animation: damageFloat 1s ease-out forwards;
+            pointer-events: none;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+            z-index: 16;
+        }
+
+        @keyframes damageFloat {
+            0% { transform: translateY(0); opacity: 1; }
+            100% { transform: translateY(-50px); opacity: 0; }
+        }
+
+        /* Kule Menzil Göstergesi */
+        .tower-range {
+            position: absolute;
+            border: 2px dashed rgba(255,255,255,0.5);
+            border-radius: 50%;
+            pointer-events: none;
+            background: rgba(255,255,255,0.1);
+            animation: rangeIndicator 2s infinite; /* Nabız efekti */
+            z-index: 1;
+        }
+
+        @keyframes rangeIndicator {
+            0%, 100% { opacity: 0.3; }
+            50% { opacity: 0.7; }
+        }
+
+
+
+
+
+        /* Duyarlılık İçin Medya Sorguları */
+        @media (max-width: 768px) {
+            .game-container {
+                flex-direction: column; /* Mobil cihazlarda dikey düzen */
+            }
+
+            .sidebar {
+                width: 100%; /* Tam genişlik */
+                height: auto; /* İçeriğe göre yükseklik */
+                max-height: 200px; /* Çok uzun olmasını engeller */
+                border-left: none;
+                border-top: 3px solid #3498db;
+                order: 2; /* Kenar çubuğu oyun tahtasının altına gelir */
+            }
+
+            .game-board {
+                width: 100vw; /* Ekran genişliğine yayılır */
+                height: calc(100vh - 200px); /* Kalan alanı kaplar */
+                flex: 1; /* Esnekliği tekrar aktif ederiz */
+                margin: 0; /* Ortalamayı kaldırırız */
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <div class="game-board" id="gameBoard">
+            <div id="towerActionsMenu" class="tower-actions" style="display: none;">
+                </div>
+        </div>
+
+        <div class="sidebar">
+            <div>
+                <h2>🏰 Kule Komutanı</h2>
+
+                <div class="stats-panel">
+                    <div class="stat-item">
+                        <span>💰 Altın:</span>
+                        <span class="stat-value" id="gold">500</span>
+                    </div>
+                    <div class="stat-item">
+                        <span>❤️ Can:</span>
+                        <span class="stat-value" id="lives">20</span>
+                    </div>
+                    <div class="stat-item">
+                        <span>📊 Skor:</span>
+                        <span class="stat-value" id="score">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span>⚡ Dalga:</span>
+                        <span class="stat-value" id="wave">1</span>
+                    </div>
+                </div>
+
+
+                <div class="tower-shop">
+                    <h3 style="color: #3498db; margin-bottom: 15px;">🏗️ Kule Mağazası</h3>
+                    <button class="tower-button archer" onclick="selectTower('archer', 200, event)">
+                        🏹 Okçu Kulesi - 200G
+                    </button>
+                    <button class="tower-button mage" onclick="selectTower('mage', 300, event)">
+                        🔮 Büyücü Kulesi - 300G
+                    </button>
+                    <button class="tower-button cannon" onclick="selectTower('cannon', 500, event)">
+                        💣 Top Kulesi - 500G
+                    </button>
+                    <button class="tower-button ice" onclick="selectTower('ice', 250, event)">
+                        ❄️ Buz Kulesi - 250G
+                    </button>
+                </div>
+
+                <div class="game-controls">
+                    <button class="control-button start-wave" onclick="startWave()">
+                        🚀 Dalga Başlat
+                    </button>
+                    <button class="control-button pause-game" onclick="togglePause(event)">
+                        ⏸️ Duraklat
+                    </button>
+                    <button class="control-button" style="background: linear-gradient(45deg, #e74c3c, #c0392b); color: white;" onclick="restartGame()">
+                        🔄 Yeniden Başla
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        const gameBoard = document.getElementById('gameBoard');
+        const goldDisplay = document.getElementById('gold');
+        const livesDisplay = document.getElementById('lives');
+        const scoreDisplay = document.getElementById('score');
+        const waveDisplay = document.getElementById('wave');
+
+
+        const towerActionsMenu = document.getElementById('towerActionsMenu');
+
+        const gridSize = 50; // Izgara hücresi boyutu
+        const cellSize = 50; // Kule ve hücrelerin görünür boyutu (GridSize ile aynı olmalı)
+
+        let gameState = {
+            gold: 600,
+            lives: 20,
+            score: 0,
+            wave: 1,
+            enemies: [],
+            towers: [],
+            selectedTowerType: null,
+            selectedTowerCost: 0,
+            projectiles: [],
+            isPaused: false,
+            powerUpInterval: null,
+            powerUpSpawnRate: 15000, // 15 saniyede bir power-up
+            gameOver: false,
+        };
+
+        const towerCosts = {
+            archer: 200,
+            mage: 300,
+            cannon: 500,
+            ice: 250
+        };
+
+        const towerStats = {
+            archer: { damage: 125, range: 200, fireRate: 750, projectileSpeed: 10, upgradeCost: 150 },
+            mage: { damage: 150, range: 150, fireRate: 1000, projectileSpeed: 7, upgradeCost: 200 },
+            cannon: { damage: 250, range: 180, fireRate: 1500, projectileSpeed: 6, splashRadius: 60, upgradeCost: 250 },
+            ice: { damage: 75, range: 170, fireRate: 1200, slowEffect: 0.5, slowDuration: 2000, projectileSpeed: 7, upgradeCost: 200 }
+        };
+
+        const enemyTypes = {
+            goblin: { hp: 500, speed: 1.5, gold: 15, score: 10, elementClass: 'enemy-goblin', armor: 0, width: 30, height: 30 },
+            orc: { hp: 750, speed: 1.2, gold: 20, score: 15, elementClass: 'enemy-orc', armor: 1, width: 35, height: 35 },
+            troll: { hp: 1000, speed: 1.3, gold: 35, score: 25, elementClass: 'enemy-troll', armor: 2, regen: 2, width: 40, height: 40 }, // Her saniye 2 HP yeniler
+            shadow: { hp: 600, speed: 2, gold: 30, score: 20, elementClass: 'enemy-shadow', dodgeChance: 0.2, width: 35, height: 35 }, // %20 kaçınma şansı
+            golem: { hp: 10000, speed: 1, gold: 60, score: 50, elementClass: 'enemy-golem', armor: 5, width: 50, height: 50 } // Yüksek zırh
+        };
+
+        // 10x20 grid için zigzag yol: En soldan başlar, sağa doğru zigzag yapar
+        const pathPoints = [
+            { x: 0, y: 0 },
+            { x: 0, y: 200 },
+            { x: 200, y: 200 },
+            { x: 200, y: 100 },
+            { x: 400, y: 100 },
+            { x: 400, y: 300 },
+            { x: 600, y: 300 },
+            { x: 600, y: 0 },
+            { x: 800, y: 0 },
+            { x: 800, y: 400 },
+            { x: 1000, y: 400 }, // En sağdan çıkış
+        ];
+
+        let numRows, numCols;
+        let animationFrameId;
+        let gameLoopInterval;
+        let lastWaveTime = 0;
+        const waveDelay = 5000; // Dalga başlangıçları arasındaki gecikme (ms)
+
+        let audioSystem;
+        let forbiddenPathCells = new Set(); // Yolun geçtiği yasaklı hücrelerin koordinatlarını tutacak
+
+        // Yeni: Ses sistemi oluşturma fonksiyonu
+        function createAudioContext() {
+            if (!audioSystem) {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                if (!AudioContext) {
+                    console.warn("Web Audio API desteklenmiyor.");
+                    return null;
+                }
+                const ctx = new AudioContext();
+                return {
+                    context: ctx,
+                    playSound: function(frequency, duration, type = 'sine') {
+                        if (!this.context) return;
+                        const oscillator = this.context.createOscillator();
+                        const gainNode = this.context.createGain();
+
+                        oscillator.type = type;
+                        oscillator.frequency.setValueAtTime(frequency, this.context.currentTime);
+                        gainNode.gain.setValueAtTime(0.2, this.context.currentTime); // Ses seviyesi
+
+                        oscillator.connect(gainNode);
+                        gainNode.connect(this.context.destination);
+
+                        oscillator.start();
+                        gainNode.gain.exponentialRampToValueAtTime(0.001, this.context.currentTime + duration);
+                        oscillator.stop(this.context.currentTime + duration);
+                    }
+                };
+            }
+            return audioSystem;
+        }
+
+        // Kullanıcı etkileşimi üzerine ses sistemini başlat
+        document.addEventListener('click', function initAudio() {
+            audioSystem = createAudioContext();
+        }, { once: true });
+
+
+        function updateUI() {
+            goldDisplay.textContent = gameState.gold;
+            livesDisplay.textContent = gameState.lives;
+            scoreDisplay.textContent = gameState.score;
+            waveDisplay.textContent = gameState.wave;
+
+
+
+            // Kule butonlarını altın durumuna göre etkinleştir/devre dışı bırak
+            document.querySelectorAll('.tower-button').forEach(button => {
+                const type = button.classList[1]; // archer, mage, cannon, ice
+                const cost = towerCosts[type];
+                if (gameState.gold >= cost) {
+                    button.removeAttribute('disabled');
+                } else {
+                    button.setAttribute('disabled', 'true');
+                }
+            });
+        }
+
+        // Yolun geçtiği tüm ızgara karelerini hesapla (sadeleştirilmiş)
+        function getForbiddenPathCells() {
+            const forbiddenCells = new Set();
+            for (let i = 0; i < pathPoints.length - 1; i++) {
+                const p1 = pathPoints[i];
+                const p2 = pathPoints[i + 1];
+                if (p1.x === p2.x) {
+                    // Dikey segment
+                    const [start, end] = [p1.y, p2.y].sort((a, b) => a - b);
+                    for (let y = start; y <= end; y += gridSize) {
+                        forbiddenCells.add(`${p1.x},${y}`);
+                    }
+                } else if (p1.y === p2.y) {
+                    // Yatay segment
+                    const [start, end] = [p1.x, p2.x].sort((a, b) => a - b);
+                    for (let x = start; x <= end; x += gridSize) {
+                        forbiddenCells.add(`${x},${p1.y}`);
+                    }
+                }
+                // Dönüş noktalarını da ekle
+                forbiddenCells.add(`${p1.x},${p1.y}`);
+                forbiddenCells.add(`${p2.x},${p2.y}`);
+            }
+            return forbiddenCells;
+        }
+
+
+        function createGrid() {
+            // Mevcut tüm ızgara hücrelerini ve kuleleri kaldır
+            document.querySelectorAll('.grid-cell').forEach(cell => cell.remove());
+            document.querySelectorAll('.tower').forEach(tower => tower.remove());
+            document.querySelectorAll('.tower-range').forEach(range => range.remove());
+
+            // gameState.towers dizisini de sıfırlayın
+            gameState.towers = [];
+
+            // Yasaklı hücreleri hesapla (bir kere çağır)
+            forbiddenPathCells = getForbiddenPathCells();
+
+
+            // Yeni ızgara boyutlarını hesapla
+            numCols = Math.floor(gameBoard.offsetWidth / gridSize);
+            numRows = Math.floor(gameBoard.offsetHeight / gridSize);
+
+            for (let y = 0; y < numRows; y++) {
+                for (let x = 0; x < numCols; x++) {
+                    const cellX = x * gridSize;
+                    const cellY = y * gridSize;
+
+                    // Hücrenin yasaklı yol hücrelerinde olup olmadığını kontrol et
+                    const isPath = forbiddenPathCells.has(`${cellX},${cellY}`);
+
+                    // Eğer hücre yol üzerinde değilse, kule yerleştirilebilir bir `grid-cell` oluştur.
+                    if (!isPath) {
+                        const cell = document.createElement('div');
+                        cell.classList.add('grid-cell');
+                        // Hücreyi ızgaraya ve kule boyutuna göre ortala
+                        cell.style.left = `${cellX + (gridSize - cellSize) / 2}px`;
+                        cell.style.top = `${cellY + (gridSize - cellSize) / 2}px`;
+                        cell.dataset.x = cellX;
+                        cell.dataset.y = cellY;
+                        cell.addEventListener('click', placeTower);
+                        gameBoard.appendChild(cell);
+                    }
+                }
+            }
+        }
+
+        function drawPath() {
+            // Mevcut tüm yol parçalarını kaldır
+            document.querySelectorAll('.path').forEach(p => p.remove());
+
+            for (let i = 0; i < pathPoints.length - 1; i++) {
+                const p1 = pathPoints[i];
+                const p2 = pathPoints[i + 1];
+
+                const pathDiv = document.createElement('div');
+                pathDiv.classList.add('path');
+
+                if (p1.x === p2.x) { // Dikey yol
+                    pathDiv.style.width = `${gridSize}px`;
+                    pathDiv.style.height = `${Math.abs(p2.y - p1.y) + gridSize}px`; // Uç noktayı da kapla
+                    pathDiv.style.left = `${p1.x}px`;
+                    pathDiv.style.top = `${Math.min(p1.y, p2.y)}px`;
+                } else if (p1.y === p2.y) { // Yatay yol
+                    pathDiv.style.width = `${Math.abs(p2.x - p1.x) + gridSize}px`; // Uç noktayı da kapla
+                    pathDiv.style.height = `${gridSize}px`;
+                    pathDiv.style.left = `${Math.min(p1.x, p2.x)}px`;
+                    pathDiv.style.top = `${p1.y}px`;
+                } else {
+                    // Köşe dönüşleri için (opsiyonel olarak iki küçük div ile daha iyi görünebilir)
+                    // Şimdilik sadece düz çizgiler çiziyoruz, köşeler birleşecektir.
+                }
+                gameBoard.appendChild(pathDiv);
+            }
+        }
+
+        function selectTower(type, cost, event) {
+            gameState.selectedTowerType = type;
+            gameState.selectedTowerCost = cost;
+
+            // Seçilen kule butonuna görsel geri bildirim ver
+            document.querySelectorAll('.tower-button').forEach(btn => {
+                btn.classList.remove('selected');
+            });
+            event.currentTarget.classList.add('selected');
+
+            if (audioSystem) {
+                audioSystem.playSound(440, 0.1, 'square'); // Seçim sesi
+            }
+        }
+
+        function placeTower(event) {
+            if (gameState.selectedTowerType && !gameState.isPaused) {
+                const cellX = parseInt(event.currentTarget.dataset.x);
+                const cellY = parseInt(event.currentTarget.dataset.y);
+
+                // Bu hücrede zaten bir kule olup olmadığını kontrol et
+                const existingTower = gameState.towers.find(t => t.x === cellX && t.y === cellY);
+                if (existingTower) {
+                    console.log("Burada zaten bir kule var!");
+                    return;
+                }
+
+                if (gameState.gold >= gameState.selectedTowerCost) {
+                    gameState.gold -= gameState.selectedTowerCost;
+
+                    const newTower = {
+                        id: Date.now(),
+                        type: gameState.selectedTowerType,
+                        x: cellX,
+                        y: cellY,
+                        ...towerStats[gameState.selectedTowerType], // İstatistikleri kopyala
+                        level: 1,
+                        attackTimer: 0,
+                        element: null, // DOM elementi
+                        rangeElement: null, // Menzil göstergesi DOM elementi
+                    };
+
+                    createTowerElement(newTower);
+                    gameState.towers.push(newTower);
+
+                    gameState.selectedTowerType = null; // Kuleyi yerleştirdikten sonra seçimi sıfırla
+                    gameState.selectedTowerCost = 0;
+                    document.querySelectorAll('.tower-button').forEach(btn => {
+                        btn.classList.remove('selected');
+                    });
+                    updateUI();
+
+                    if (audioSystem) {
+                        audioSystem.playSound(600, 0.1, 'triangle'); // Kule yerleştirme sesi
+                    }
+                } else {
+                    console.log("Yetersiz altın!");
+                    if (audioSystem) {
+                        audioSystem.playSound(200, 0.2, 'sawtooth'); // Hata sesi
+                    }
+                }
+            }
+        }
+
+        function createTowerElement(tower) {
+    const towerDiv = document.createElement('div');
+    towerDiv.classList.add('tower', `tower-${tower.type}`);
+    towerDiv.style.left = `${tower.x + (gridSize - cellSize) / 2}px`;
+    towerDiv.style.top = `${tower.y + (gridSize - cellSize) / 2}px`;
+    towerDiv.textContent = getTowerIcon(tower.type); // Kule ikonunu ayarla
+    towerDiv.dataset.towerId = tower.id; // Kuleye ID atayın
+    
+    towerDiv.addEventListener('click', (e) => {
+        e.stopPropagation(); // Olayın gameBoard'a yayılmasını engelle
+        
+        // Menzil göstergesini toggle et
+        if (tower.rangeElement.style.display === 'none' || tower.rangeElement.style.display === '') {
+            tower.rangeElement.style.display = 'block';
+        } else {
+            tower.rangeElement.style.display = 'none';
+        }
+        
+        showTowerActions(tower);
+    });
+    
+    gameBoard.appendChild(towerDiv);
+    tower.element = towerDiv; // Kule elementini objeye kaydet
+
+    // Menzil göstergesi oluştur
+    const rangeDiv = document.createElement('div');
+    rangeDiv.classList.add('tower-range');
+    rangeDiv.style.width = `${tower.range * 2}px`;
+    rangeDiv.style.height = `${tower.range * 2}px`;
+    rangeDiv.style.left = `${tower.x + (cellSize / 2) - tower.range}px`;
+    rangeDiv.style.top = `${tower.y + (cellSize / 2) - tower.range}px`;
+    rangeDiv.style.display = 'none'; // Başlangıçta gizli
+    
+    gameBoard.appendChild(rangeDiv);
+    tower.rangeElement = rangeDiv;
+}
+
+        function getTowerIcon(type) {
+            switch (type) {
+                case 'archer': return '🏹';
+                case 'mage': return '🔮';
+                case 'cannon': return '💣';
+                case 'ice': return '❄️';
+                default: return '❓';
+            }
+        }
+
+        let currentActiveTower = null; // Şu anda menüsü açık olan kuleyi takip eder
+
+        function showTowerActions(tower) {
+            // Eğer farklı bir kule seçiliyse, o menüyü kapat
+            if (currentActiveTower && currentActiveTower.id !== tower.id) {
+                towerActionsMenu.style.display = 'none';
+            }
+
+            currentActiveTower = tower;
+
+            // Menüyü kule pozisyonuna göre konumlandır
+            towerActionsMenu.style.left = `${tower.x + cellSize + 10}px`; // Kulenin sağına
+            towerActionsMenu.style.top = `${tower.y}px`;
+            towerActionsMenu.style.display = 'flex'; // Menüyü göster
+
+            // Menü içeriğini temizle
+            towerActionsMenu.innerHTML = '';
+
+            // Yükseltme butonu
+            const upgradeButton = document.createElement('button');
+            upgradeButton.classList.add('action-button', 'upgrade-button');
+            upgradeButton.textContent = `Yükselt (Level ${tower.level + 1}) - ${tower.upgradeCost}G`;
+            upgradeButton.onclick = () => upgradeTower(tower);
+            if (gameState.gold < tower.upgradeCost || tower.level >= 3) { // Maksimum level 3 varsayalım
+                upgradeButton.disabled = true;
+                if (tower.level >= 3) upgradeButton.textContent = 'Maks Level';
+            }
+            towerActionsMenu.appendChild(upgradeButton);
+
+            // Satış butonu
+            const sellValue = Math.floor(towerCosts[tower.type] * 0.7); // Geri ödeme değeri
+            const sellButton = document.createElement('button');
+            sellButton.classList.add('action-button', 'sell-button');
+            sellButton.textContent = `Sat - ${sellValue}G`;
+            sellButton.onclick = () => sellTower(tower, sellValue);
+            towerActionsMenu.appendChild(sellButton);
+
+            if (audioSystem) {
+                audioSystem.playSound(500, 0.1, 'sine'); // Menü açılma sesi
+            }
+        }
+
+        function upgradeTower(tower) {
+            if (gameState.gold >= tower.upgradeCost && tower.level < 3) {
+                gameState.gold -= tower.upgradeCost;
+                tower.level++;
+                tower.damage = Math.floor(tower.damage * 1.5); // Hasarı artır
+                tower.fireRate = Math.floor(tower.fireRate * 0.8); // Atış hızını artır (ms azalt)
+                tower.range = Math.floor(tower.range * 1.1); // Menzili artır
+                tower.upgradeCost = Math.floor(tower.upgradeCost * 1.5); // Yükseltme maliyetini artır
+
+                if (tower.type === 'cannon' && tower.splashRadius) {
+                    tower.splashRadius = Math.min(tower.splashRadius + 10, 100); // Sıçrama alanını artır
+                }
+                if (tower.type === 'ice' && tower.slowEffect) {
+                    tower.slowEffect = Math.min(tower.slowEffect + 0.1, 0.8); // Yavaşlatma etkisini artır
+                }
+
+                // Menzil göstergesini güncelle
+                if (tower.rangeElement) {
+                    tower.rangeElement.style.width = `${tower.range * 2}px`;
+                    tower.rangeElement.style.height = `${tower.range * 2}px`;
+                    tower.rangeElement.style.left = `${tower.x + (cellSize / 2) - tower.range}px`;
+                    tower.rangeElement.style.top = `${tower.y + (cellSize / 2) - tower.range}px`;
+                }
+
+                updateUI();
+                towerActionsMenu.style.display = 'none'; // Menüyü kapat
+                if (audioSystem) {
+                    audioSystem.playSound(700, 0.1, 'square'); // Yükseltme sesi
+                }
+            } else {
+                if (audioSystem) {
+                    audioSystem.playSound(200, 0.2, 'sawtooth'); // Hata sesi
+                }
+            }
+        }
+
+        function sellTower(tower, value) {
+            gameState.gold += value;
+            gameState.towers = gameState.towers.filter(t => t.id !== tower.id);
+            if (tower.element) tower.element.remove();
+            if (tower.rangeElement) tower.rangeElement.remove();
+            updateUI();
+            towerActionsMenu.style.display = 'none'; // Menüyü kapat
+            if (audioSystem) {
+                audioSystem.playSound(300, 0.1, 'sine'); // Satış sesi
+            }
+        }
+
+        // Oyun tahtasına tıklayınca menüyü kapat
+        gameBoard.addEventListener('click', () => {
+            towerActionsMenu.style.display = 'none';
+            currentActiveTower = null;
+        });
+
+        function getDistance(x1, y1, x2, y2) {
+            return Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
+        }
+
+        function fireProjectile(tower, targetEnemy) {
+            if (!tower.element || !targetEnemy.element) return;
+
+            const towerCenterX = tower.x + cellSize / 2;
+            const towerCenterY = tower.y + cellSize / 2;
+            const enemyCenterX = targetEnemy.x + targetEnemy.element.offsetWidth / 2;
+            const enemyCenterY = targetEnemy.y + targetEnemy.element.offsetHeight / 2;
+
+            const projectile = {
+                id: Date.now() + Math.random(),
+                x: towerCenterX,
+                y: towerCenterY,
+                targetEnemy: targetEnemy,
+                damage: tower.damage,
+                speed: tower.projectileSpeed,
+                type: tower.type, // Mermi tipini kule tipine göre ayarla
+                element: document.createElement('div'),
+                splashRadius: tower.splashRadius || 0, // Top kulesi için
+                slowEffect: tower.slowEffect || 0, // Buz kulesi için
+            };
+
+            projectile.element.classList.add('projectile');
+            if (projectile.type === 'mage') {
+                projectile.element.style.backgroundColor = '#8e44ad'; // Büyücü mermisi mor
+                projectile.element.style.boxShadow = '0 0 10px #8e44ad';
+            } else if (projectile.type === 'cannon') {
+                projectile.element.style.backgroundColor = '#c0392b'; // Top mermisi kırmızı
+                projectile.element.style.width = '12px'; // Daha büyük
+                projectile.element.style.height = '12px';
+                projectile.element.style.boxShadow = '0 0 15px #c0392b';
+            } else if (projectile.type === 'ice') {
+                projectile.element.style.backgroundColor = '#3498db'; // Buz mermisi mavi
+                projectile.element.style.boxShadow = '0 0 10px #3498db';
+            }
+
+            projectile.element.style.left = `${projectile.x}px`;
+            projectile.element.style.top = `${projectile.y}px`;
+            gameBoard.appendChild(projectile.element);
+            gameState.projectiles.push(projectile);
+
+            if (audioSystem) {
+                if (tower.type === 'archer') audioSystem.playSound(800, 0.05, 'sine');
+                if (tower.type === 'mage') audioSystem.playSound(600, 0.1, 'triangle');
+                if (tower.type === 'cannon') audioSystem.playSound(100, 0.2, 'sawtooth');
+                if (tower.type === 'ice') audioSystem.playSound(900, 0.08, 'square');
+            }
+        }
+
+        function updateProjectiles(deltaTime) {
+            gameState.projectiles = gameState.projectiles.filter(projectile => {
+                if (!projectile.targetEnemy || !projectile.targetEnemy.element || projectile.targetEnemy.hp <= 0) {
+                    projectile.element.remove();
+                    return false;
+                }
+
+                const targetEnemyCenterX = projectile.targetEnemy.x + projectile.targetEnemy.element.offsetWidth / 2;
+                const targetEnemyCenterY = projectile.targetEnemy.y + projectile.targetEnemy.element.offsetHeight / 2;
+
+                const dx = targetEnemyCenterX - projectile.x;
+                const dy = targetEnemyCenterY - projectile.y;
+                const distance = getDistance(projectile.x, projectile.y, targetEnemyCenterX, targetEnemyCenterY);
+
+                if (distance < projectile.speed) { // Mermi hedefe ulaştı
+                    applyDamage(projectile.targetEnemy, projectile.damage, projectile.type);
+
+                    if (projectile.type === 'cannon' && projectile.splashRadius > 0) {
+                        applySplashDamage(projectile.targetEnemy.x, projectile.targetEnemy.y, projectile.splashRadius, projectile.damage * 0.5); // Sıçrama hasarı %50
+                        createParticleSystem(projectile.targetEnemy.x + 20, projectile.targetEnemy.y + 20, '#ff6b35', 50); // Patlama efekti
+                    }
+
+                    if (projectile.type === 'ice' && projectile.slowEffect > 0) {
+                        applySlow(projectile.targetEnemy, projectile.slowEffect, projectile.slowDuration);
+                        createParticleSystem(projectile.targetEnemy.x + 20, projectile.targetEnemy.y + 20, '#3498db', 20); // Buz efekti
+                    }
+
+                    projectile.element.remove();
+                    return false;
+                } else {
+                    const moveAmount = projectile.speed * (deltaTime / 16); // Kare hızına göre ayarla
+                    projectile.x += (dx / distance) * moveAmount;
+                    projectile.y += (dy / distance) * moveAmount;
+
+                    projectile.element.style.left = `${projectile.x}px`;
+                    projectile.element.style.top = `${projectile.y}px`;
+                    return true;
+                }
+            });
+        }
+
+        function applyDamage(enemy, damage, type) {
+            // Kaçınma şansı
+            if (enemy.dodgeChance && Math.random() < enemy.dodgeChance) {
+                console.log("KAÇINDI!");
+                createDamageText(enemy.x + 20, enemy.y, "KAÇINDI!", '#ffffff'); // Beyaz kaçınma yazısı
+                return;
+            }
+
+            // Zırh hesaplaması
+            const effectiveDamage = Math.max(1, damage - enemy.armor); // En az 1 hasar versin
+            enemy.hp -= effectiveDamage;
+            console.log(`Düşman ${enemy.id} ${effectiveDamage} hasar aldı. Kalan HP: ${enemy.hp}`);
+
+            createDamageText(enemy.x + 20, enemy.y - 10, `-${effectiveDamage}`, '#ff0000'); // Kırmızı hasar yazısı
+
+            // Sağlık çubuğunu güncelle
+            if (enemy.healthBarFill) {
+                enemy.healthBarFill.style.width = `${Math.max(0, (enemy.hp / enemy.maxHp) * 100)}%`;
+            }
+
+            if (enemy.hp <= 0) {
+                killEnemy(enemy);
+            }
+        }
+
+        function applySplashDamage(centerX, centerY, radius, damage) {
+            gameState.enemies.forEach(enemy => {
+                if (enemy.hp > 0) {
+                    const enemyCenterX = enemy.x + enemy.element.offsetWidth / 2;
+                    const enemyCenterY = enemy.y + enemy.element.offsetHeight / 2;
+                    if (getDistance(centerX, centerY, enemyCenterX, enemyCenterY) <= radius) {
+                        applyDamage(enemy, damage, 'splash'); // Sıçrama hasarı
+                    }
+                }
+            });
+        }
+
+        function applySlow(enemy, effect, duration) {
+            // Zaten yavaşlamışsa süreyi yenile veya daha güçlü etkiyi uygula
+            if (enemy.isSlowed && enemy.slowEffect >= effect) {
+                clearTimeout(enemy.slowTimer);
+            } else if (enemy.isSlowed && enemy.slowEffect < effect) {
+                enemy.speed = enemy.initialSpeed; // Önceki yavaşlamayı kaldır
+            }
+
+            enemy.initialSpeed = enemy.initialSpeed || enemy.speed; // İlk hızı kaydet
+            enemy.speed = enemy.initialSpeed * (1 - effect);
+            enemy.isSlowed = true;
+            enemy.slowEffect = effect; // Uygulanan yavaşlatma etkisini kaydet
+
+            // Görsel geri bildirim
+            if (enemy.element) {
+                enemy.element.style.filter = 'grayscale(70%) brightness(1.5)';
+                enemy.element.style.transition = 'filter 0.5s ease-out';
+            }
+
+
+            enemy.slowTimer = setTimeout(() => {
+                enemy.speed = enemy.initialSpeed;
+                enemy.isSlowed = false;
+                enemy.slowEffect = 0;
+                if (enemy.element) {
+                    enemy.element.style.filter = 'none';
+                }
+            }, duration);
+        }
+
+        function createDamageText(x, y, text, color) {
+            const damageText = document.createElement('div');
+            damageText.classList.add('damage-text');
+            damageText.textContent = text;
+            damageText.style.left = `${x}px`;
+            damageText.style.top = `${y}px`;
+            damageText.style.color = color;
+            gameBoard.appendChild(damageText);
+
+            damageText.addEventListener('animationend', () => {
+                damageText.remove();
+            });
+        }
+
+        function killEnemy(enemy) {
+            if (enemy.element) {
+                enemy.element.remove();
+                if (enemy.healthBar) enemy.healthBar.remove();
+            }
+            gameState.gold += enemy.gold;
+            gameState.score += enemy.score;
+            createParticleSystem(enemy.x + 20, enemy.y + 20, '#f7dc6f', 30); // Altın rengi partiküller
+            updateUI();
+            gameState.enemies = gameState.enemies.filter(e => e.id !== enemy.id); // Diziden kaldır
+
+            if (audioSystem) {
+                audioSystem.playSound(1000, 0.1, 'square'); // Düşman ölüm sesi
+            }
+        }
+
+        function updateEnemies(deltaTime) {
+            gameState.enemies.forEach(enemy => {
+                if (enemy.hp <= 0) return;
+
+                // Regen (HP yenileme)
+                if (enemy.regen) {
+                    enemy.hp = Math.min(enemy.maxHp, enemy.hp + enemy.regen * (deltaTime / 1000)); // Her saniye regen
+                    if (enemy.healthBarFill) {
+                        enemy.healthBarFill.style.width = `${(enemy.hp / enemy.maxHp) * 100}%`;
+                    }
+                }
+
+                const currentPathPoint = pathPoints[enemy.pathIndex];
+                const nextPathPoint = pathPoints[enemy.pathIndex + 1];
+
+                if (!nextPathPoint) { // Yola ulaştı
+                    gameState.lives--;
+                    if (audioSystem) {
+                        audioSystem.playSound(50, 0.3, 'sine'); // Can kaybı sesi
+                    }
+                    if (enemy.element) {
+                        enemy.element.remove();
+                        if (enemy.healthBar) enemy.healthBar.remove();
+                    }
+                    gameState.enemies = gameState.enemies.filter(e => e.id !== enemy.id);
+                    updateUI();
+                    return;
+                }
+
+                const dx = nextPathPoint.x - enemy.x;
+                const dy = nextPathPoint.y - enemy.y;
+                const distanceToNextPoint = getDistance(enemy.x, enemy.y, nextPathPoint.x, nextPathPoint.y);
+
+                const moveAmount = enemy.speed * (deltaTime / 16); // Kare hızına göre ayarla
+
+                if (distanceToNextPoint < moveAmount) {
+                    enemy.x = nextPathPoint.x;
+                    enemy.y = nextPathPoint.y;
+                    enemy.pathIndex++;
+                } else {
+                    enemy.x += (dx / distanceToNextPoint) * moveAmount;
+                    enemy.y += (dy / distanceToNextPoint) * moveAmount;
+                }
+
+                if (enemy.element) {
+                    enemy.element.style.left = `${enemy.x + (gridSize - enemy.element.offsetWidth) / 2}px`;
+                    enemy.element.style.top = `${enemy.y + (gridSize - enemy.element.offsetHeight) / 2}px`;
+                }
+            });
+        }
+
+        function createEnemy(type) {
+            const enemy = {
+                id: Date.now() + Math.random(),
+                type: type,
+                x: pathPoints[0].x,
+                y: pathPoints[0].y,
+                pathIndex: 0,
+                hp: enemyTypes[type].hp,
+                maxHp: enemyTypes[type].hp, // Maksimum HP'yi sakla
+                speed: enemyTypes[type].speed,
+                gold: enemyTypes[type].gold,
+                score: enemyTypes[type].score,
+                element: null, // DOM elementi
+                healthBar: null, // Sağlık çubuğu elementi
+                healthBarFill: null, // Sağlık çubuğu dolum elementi
+                armor: enemyTypes[type].armor || 0,
+                dodgeChance: enemyTypes[type].dodgeChance || 0,
+                regen: enemyTypes[type].regen || 0,
+                isSlowed: false,
+                slowEffect: 0,
+                slowTimer: null,
+                initialSpeed: enemyTypes[type].speed, // Yavaşlamayı geri almak için
+            };
+
+            const enemyDiv = document.createElement('div');
+            enemyDiv.classList.add('enemy', enemyTypes[type].elementClass);
+            // Düşman boyutlarını enemyTypes'tan al, ortalamayı da hesapla
+            enemyDiv.style.width = `${enemyTypes[type].width}px`;
+            enemyDiv.style.height = `${enemyTypes[type].height}px`;
+            enemyDiv.style.left = `${enemy.x + (gridSize - enemyTypes[type].width) / 2}px`;
+            enemyDiv.style.top = `${enemy.y + (gridSize - enemyTypes[type].height) / 2}px`;
+            enemyDiv.innerHTML = getEnemyIcon(type); // Düşman ikonunu ayarla
+            gameBoard.appendChild(enemyDiv);
+            enemy.element = enemyDiv;
+
+            // Sağlık çubuğu oluştur
+            const healthBar = document.createElement('div');
+            healthBar.classList.add('health-bar');
+            const healthFill = document.createElement('div');
+            healthFill.classList.add('health-fill');
+            healthBar.appendChild(healthFill);
+            enemyDiv.appendChild(healthBar); // Düşman div'inin içine ekle
+            enemy.healthBar = healthBar;
+            enemy.healthBarFill = healthFill;
+
+
+            gameState.enemies.push(enemy);
+            updateUI();
+        }
+
+        function getEnemyIcon(type) {
+            switch (type) {
+                case 'goblin': return '😈';
+                case 'orc': return '👹';
+                case 'troll': return '🧌';
+                case 'shadow': return '👻';
+                case 'golem': return '🗿';
+                default: return '❓';
+            }
+        }
+
+        function getWaveEnemies(waveNumber) {
+            const enemies = [];
+            let totalEnemies = 5 + waveNumber * 2; // Dalga ile düşman sayısını artır
+
+            for (let i = 0; i < totalEnemies; i++) {
+                let enemyType;
+                const rand = Math.random();
+                if (waveNumber < 3) {
+                    enemyType = 'goblin';
+                } else if (waveNumber < 6) {
+                    if (rand < 0.7) enemyType = 'goblin';
+                    else enemyType = 'orc';
+                } else if (waveNumber < 9) {
+                    if (rand < 0.5) enemyType = 'orc';
+                    else if (rand < 0.8) enemyType = 'troll';
+                    else enemyType = 'shadow';
+                } else {
+                    if (rand < 0.4) enemyType = 'troll';
+                    else if (rand < 0.7) enemyType = 'shadow';
+                    else enemyType = 'golem';
+                }
+                enemies.push(enemyType);
+            }
+            return enemies;
+        }
+
+
+        let waveEnemySpawnIndex = 0;
+        let waveSpawnInterval;
+        let currentWaveEnemies = [];
+
+        function startWave() {
+            if (gameState.isPaused || gameState.gameOver) return;
+
+            if (gameState.enemies.length > 0) {
+                console.log("Mevcut düşmanlar bitmeden yeni dalga başlatılamaz.");
+                return;
+            }
+
+            gameState.wave++;
+            currentWaveEnemies = getWaveEnemies(gameState.wave);
+
+            waveEnemySpawnIndex = 0;
+
+            // Düşmanları belli aralıklarla spawn et
+            waveSpawnInterval = setInterval(() => {
+                if (waveEnemySpawnIndex < currentWaveEnemies.length) {
+                    createEnemy(currentWaveEnemies[waveEnemySpawnIndex]);
+                    waveEnemySpawnIndex++;
+                } else {
+                    clearInterval(waveSpawnInterval);
+                }
+            }, 700); // Her 700ms'de bir düşman spawn et
+
+            updateUI();
+            if (audioSystem) {
+                audioSystem.playSound(650, 0.2, 'sine'); // Dalga başlangıç sesi
+            }
+        }
+
+        function gameLoop(timestamp) {
+            if (gameState.isPaused || gameState.gameOver) {
+                animationFrameId = requestAnimationFrame(gameLoop);
+                return;
+            }
+
+            const deltaTime = timestamp - lastWaveTime;
+            lastWaveTime = timestamp;
+
+            updateTowers(deltaTime);
+            updateEnemies(deltaTime);
+            updateProjectiles(deltaTime);
+
+            if (gameState.lives <= 0) {
+                endGame();
+            }
+
+            if (gameState.enemies.length === 0 && waveEnemySpawnIndex >= currentWaveEnemies.length && gameState.wave > 0) {
+                // Eğer dalga bittiyse ve yeni dalga başlamak için belirli bir süre geçtiyse otomatik olarak başla
+                if (timestamp - (waveSpawnInterval ? waveSpawnInterval.lastExecutionTime : 0) > waveDelay) {
+                    // Bu kısım otomatik dalga başlangıcı için, isterseniz kaldırabilirsiniz.
+                    // startWave();
+                }
+            }
+            animationFrameId = requestAnimationFrame(gameLoop);
+        }
+
+        function togglePause(event) {
+            gameState.isPaused = !gameState.isPaused;
+            event.target.textContent = gameState.isPaused ? '▶️ Devam Et' : '⏸️ Duraklat';
+            if (gameState.isPaused) {
+                cancelAnimationFrame(animationFrameId);
+                clearInterval(waveSpawnInterval);
+                clearInterval(gameState.powerUpInterval);
+                console.log("Oyun Duraklatıldı.");
+            } else {
+                lastWaveTime = performance.now(); // Duraklatmadan sonra zamanı sıfırla
+                animationFrameId = requestAnimationFrame(gameLoop);
+                if (waveEnemySpawnIndex < currentWaveEnemies.length) { // Dalga yarım kaldıysa devam ettir
+                    waveSpawnInterval = setInterval(() => {
+                        if (waveEnemySpawnIndex < currentWaveEnemies.length) {
+                            createEnemy(currentWaveEnemies[waveEnemySpawnIndex]);
+                            waveEnemySpawnIndex++;
+                        } else {
+                            clearInterval(waveSpawnInterval);
+                        }
+                    }, 700);
+                }
+                // Power-up aralığını tekrar başlat
+                if (!gameState.powerUpInterval) {
+                    gameState.powerUpInterval = setInterval(createPowerUp, gameState.powerUpSpawnRate);
+                }
+                console.log("Oyun Devam Ediyor.");
+            }
+            if (audioSystem) {
+                audioSystem.playSound(550, 0.1, 'sine'); // Duraklatma sesi
+            }
+        }
+
+        function restartGame() {
+            // Tüm elementleri temizle
+            document.querySelectorAll('.enemy').forEach(e => e.remove());
+            document.querySelectorAll('.tower').forEach(t => t.remove());
+            document.querySelectorAll('.tower-range').forEach(r => r.remove());
+            document.querySelectorAll('.projectile').forEach(p => p.remove());
+            document.querySelectorAll('.grid-cell').forEach(c => c.remove());
+            document.querySelectorAll('.path').forEach(p => p.remove());
+            document.querySelectorAll('.explosion').forEach(e => e.remove());
+            document.querySelectorAll('.damage-text').forEach(d => d.remove());
+            document.querySelectorAll('.power-up').forEach(p => p.remove());
+
+            // Tüm zamanlayıcıları temizle
+            cancelAnimationFrame(animationFrameId);
+            clearInterval(gameLoopInterval); // Eğer kullanılıyorsa
+            clearInterval(waveSpawnInterval);
+            clearInterval(gameState.powerUpInterval);
+
+            // Oyun durumunu sıfırla
+            gameState = {
+                gold: 500,
+                lives: 20,
+                score: 0,
+                wave: 0, // Dalga 0'dan başlasın, ilk dalga başlatılınca 1 olsun
+                enemies: [],
+                towers: [],
+                selectedTowerType: null,
+                selectedTowerCost: 0,
+                projectiles: [],
+                isPaused: false,
+                powerUpInterval: null,
+                powerUpSpawnRate: 15000,
+                gameOver: false,
+            };
+
+            // UI'ı güncelle
+            updateUI();
+            document.querySelector('.pause-game').textContent = '⏸️ Duraklat'; // Duraklat butonunu sıfırla
+
+            // Izgarayı ve yolu yeniden çiz
+            createGrid();
+            drawPath();
+
+            // Yeni dalga için hazırlık
+            waveEnemySpawnIndex = 0;
+            currentWaveEnemies = []; // Dalga başlangıcı butonu ile başlasın
+
+            // Oyun döngüsünü başlat
+            lastWaveTime = performance.now();
+            animationFrameId = requestAnimationFrame(gameLoop);
+            // Power-up aralığını tekrar başlat
+            gameState.powerUpInterval = setInterval(createPowerUp, gameState.powerUpSpawnRate);
+
+            if (audioSystem) {
+                audioSystem.playSound(750, 0.2, 'square'); // Oyun yeniden başlama sesi
+            }
+            console.log("Oyun Yeniden Başlatıldı.");
+        }
+
+
+        function endGame() {
+            gameState.gameOver = true;
+            cancelAnimationFrame(animationFrameId);
+            clearInterval(waveSpawnInterval);
+            clearInterval(gameState.powerUpInterval);
+
+
+
+            if (audioSystem) {
+                audioSystem.playSound(100, 0.5, 'triangle'); // Oyun bitti sesi
+            }
+            console.log("Oyun Bitti.");
+        }
+
+
+        function updateTowers(deltaTime) {
+            gameState.towers.forEach(tower => {
+                tower.attackTimer += deltaTime;
+
+                if (tower.attackTimer >= tower.fireRate) {
+                    let targetEnemy = findTarget(tower);
+                    if (targetEnemy) {
+                        fireProjectile(tower, targetEnemy);
+                        tower.attackTimer = 0; // Atış zamanlayıcısını sıfırla
+                    }
+                }
+            });
+        }
+
+        function findTarget(tower) {
+            // Menzildeki yol üzerinde en ilerlemiş (en yüksek pathIndex, eşitse segmentte en ileride) düşmanı bul
+            const towerCenterX = tower.x + cellSize / 2;
+            const towerCenterY = tower.y + cellSize / 2;
+            let bestEnemy = null;
+            let bestProgress = -1;
+
+            gameState.enemies.forEach(enemy => {
+                if (enemy.hp <= 0 || !enemy.element) return;
+                const enemyCenterX = enemy.x + enemy.element.offsetWidth / 2;
+                const enemyCenterY = enemy.y + enemy.element.offsetHeight / 2;
+                const distance = getDistance(towerCenterX, towerCenterY, enemyCenterX, enemyCenterY);
+                if (distance <= tower.range) {
+                    // Yol üzerindeki ilerleme: önce pathIndex, eşitse segmentteki ilerleme oranı
+                    let progress = enemy.pathIndex;
+                    const nextPoint = pathPoints[enemy.pathIndex + 1];
+                    const currPoint = pathPoints[enemy.pathIndex];
+                    if (nextPoint && currPoint) {
+                        const totalSeg = getDistance(currPoint.x, currPoint.y, nextPoint.x, nextPoint.y);
+                        const currSeg = getDistance(enemy.x, enemy.y, nextPoint.x, nextPoint.y);
+                        if (totalSeg > 0) {
+                            progress += 1 - (currSeg / totalSeg);
+                        }
+                    }
+                    if (progress > bestProgress) {
+                        bestProgress = progress;
+                        bestEnemy = enemy;
+                    }
+                }
+            });
+            return bestEnemy;
+        }
+
+        // Partikül Sistemi
+        function createParticleSystem(x, y, color, count) {
+            for (let i = 0; i < count; i++) {
+                const particle = document.createElement('div');
+                particle.classList.add('particle');
+                particle.style.position = 'absolute';
+                particle.style.left = `${x}px`;
+                particle.style.top = `${y}px`;
+                particle.style.width = '5px';
+                particle.style.height = '5px';
+                particle.style.borderRadius = '50%';
+                particle.style.background = color;
+                gameBoard.appendChild(particle);
+
+                const angle = Math.random() * Math.PI * 2;
+                const speed = Math.random() * 5 + 2; // 2 ile 7 arasında hız
+                const dx = Math.cos(angle) * speed;
+                const dy = Math.sin(angle) * speed;
+
+                let currentX = x;
+                let currentY = y;
+                let opacity = 1;
+
+                const animateParticle = () => {
+                    if (opacity <= 0.1) {
+                        particle.remove();
+                        return;
+                    }
+                    currentX += dx;
+                    currentY += dy;
+                    opacity -= 0.05;
+
+                    particle.style.left = `${currentX}px`;
+                    particle.style.top = `${currentY}px`;
+                    particle.style.opacity = opacity;
+
+                    requestAnimationFrame(animateParticle);
+                };
+                animateParticle();
+            }
+            // CSS animasyonu ekle (eğer daha önce eklenmediyse)
+            if (!document.querySelector('style[data-particle-animation]')) {
+                const style = document.createElement('style');
+                style.setAttribute('data-particle-animation', '');
+                style.textContent += `
+                    .particle {
+                        pointer-events: none;
+                        z-index: 100;
+                    }
+                `;
+                document.head.appendChild(style);
+            }
+        }
+
+    // Power-up fonksiyonu ve animasyonu kaldırıldı (güvenlik ve istek gereği)
+
+
+        // Oyun Başlangıcı
+        document.addEventListener('DOMContentLoaded', () => {
+            // numRows ve numCols'un doğru hesaplandığından emin olmak için DOMContentLoaded'da
+            // ve window.addEventListener('resize') içinde createGrid'i çağırırken dikkatli olun.
+            // gameBoard'un boyutları CSS'te sabitlendiği için, bu değerler bir kez hesaplanabilir.
+            numCols = Math.floor(gameBoard.offsetWidth / gridSize);
+            numRows = Math.floor(gameBoard.offsetHeight / gridSize);
+
+            createGrid();
+            drawPath();
+            updateUI();
+            lastWaveTime = performance.now();
+            animationFrameId = requestAnimationFrame(gameLoop);
+            // Power-up kaldırıldı, interval başlatılmıyor
+        });
+
+        // Pencere yeniden boyutlandırıldığında ızgarayı ve yolu yeniden çiz
+        window.addEventListener('resize', () => {
+             // Duyarlılık CSS'i devreye girdiğinde veya gameBoard'un boyutu değiştiğinde
+             // numCols ve numRows'u yeniden hesapla.
+            numCols = Math.floor(gameBoard.offsetWidth / gridSize);
+            numRows = Math.floor(gameBoard.offsetHeight / gridSize);
+            createGrid(); // grid-cell'leri yeniden oluştur
+            drawPath(); // yolu yeniden çiz
+        });
+
+    </script>
+</body>
+</html>
