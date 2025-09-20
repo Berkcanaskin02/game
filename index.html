@@ -5,89 +5,141 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Kule Komutanı</title>
     <style>
-        /* Genel Sıfırlamalar ve Temel Stiller */
-        * {
+        /* TEMEL LAYOUT STİLLERİ (EKSİKTİ) */
+        html, body {
             margin: 0;
             padding: 0;
+            background: radial-gradient(circle at top,#1e2a38,#0d141c 60%);
+            font-family: system-ui, Arial, sans-serif;
+            color: #ecf0f1;
+            overflow-x: hidden;
+        }
+        .game-container {
+            display: flex;
+            width: 100%;
+            height: 100vh;
             box-sizing: border-box;
         }
-
-        body {
-            font-family: 'Arial', sans-serif;
-            background: linear-gradient(135deg, #002a40 0%, #2ca7e4 100%);
-            color: white;
-            overflow: hidden; /* Sayfa kaydırmasını engeller */
-        }
-
-        /* Oyun Konteyneri - Tam Ekran ve Flex Düzeni */
-        .game-container {
-            width: 100vw;
-            height: 100vh;
-            position: relative;
-            display: flex; /* Oyun tahtası ve kenar çubuğunu yan yana yerleştirir */
-        }
-
-        /* Oyun Tahtası - Izgara Temelli Alan */
         .game-board {
-            width: 1000px; /* 20 sütun x 50px */
-            height: 500px; /* 10 satır x 50px */
             position: relative;
-            background: linear-gradient(45deg, #2d4a22 0%, #8fbc8f 50%, #2d4a22 100%);
-            background-size: 50px 50px;
-            background-image:
-                radial-gradient(circle at 25px 25px, rgba(255,255,255,0.1) 2px, transparent 2px);
+            width: 1000px;
+            height: 500px;
             margin: auto;
-            align-self: center;
+            background: linear-gradient(135deg,#2f3640 0%, #3b4b5b 100%);
+            border: 4px solid #2c3e50;
+            box-shadow: 0 0 25px rgba(0,0,0,0.6);
+            overflow: hidden;
         }
-
-        /* Yolun Görsel Temsili */
-        .path {
-            position: absolute;
-            background: linear-gradient(90deg, #f7b42c 0%, #fc575e 100%);
-            border-radius: 16px;
-            box-shadow: 0 0 18px 2px #fc575e55, 0 2px 12px 0 rgba(0,0,0,0.18);
-            z-index: 1;
-            opacity: 0.85;
-        }
-
-        /* Izgara Hücresi (Kule Yerleştirme Alanları) */
         .grid-cell {
             position: absolute;
             width: 50px;
             height: 50px;
-            border: 1.5px solid rgba(255,255,255,0.12);
-            border-radius: 12px;
-            background: linear-gradient(135deg, #3a5d2c 0%, #6bbf59 100%);
-            box-shadow: 0 2px 8px 0 rgba(0,0,0,0.10);
-            transition: box-shadow 0.25s, border-color 0.25s, background 0.25s;
-            cursor: pointer;
-            z-index: 5;
-            opacity: 0.92;
+            box-sizing: border-box;
+            border: 1px solid rgba(255,255,255,0.06);
+            cursor: crosshair;
+            transition: background .2s ease, box-shadow .2s ease;
         }
-
-        .grid-cell:hover {
-            background: linear-gradient(135deg, #6bbf59 0%, #a8e063 100%);
-            border-color: #a8e063;
-            box-shadow: 0 0 18px 2px #a8e06399, 0 2px 12px 0 rgba(0,0,0,0.18);
-            opacity: 1;
+        .grid-cell:hover { background: rgba(255,255,255,0.08); box-shadow: inset 0 0 6px rgba(255,255,255,0.25); }
+        .path {
+            position: absolute;
+            background: repeating-linear-gradient(45deg, #8d6e63, #8d6e63 10px, #7f6157 10px, #7f6157 20px);
+            box-shadow: inset 0 0 6px rgba(0,0,0,0.6), 0 0 10px rgba(255,193,113,0.2);
+            opacity: 0.9;
+            z-index: 2;
         }
-
-        /* Kuleler */
         .tower {
             position: absolute;
-            width: 50px; /* gridSize değeriyle aynı */
-            height: 50px; /* gridSize değeriyle aynı */
-            border-radius: 50%;
+            width: 50px;
+            height: 50px;
             display: flex;
             align-items: center;
             justify-content: center;
             font-size: 24px;
+            border-radius: 12px;
+            color: #fff;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
             cursor: pointer;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-            animation: towerPulse 2s infinite; /* Hafif nabız efekti */
+            user-select: none;
             z-index: 10;
+            transition: transform .15s ease;
         }
+        .tower:hover { transform: translateY(-4px) scale(1.05); }
+        #towerActionsMenu button { font-size: 13px; }
+
+        /* GAME OVER OVERLAY */
+        #gameOverOverlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(0,0,0,0.80);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 28px;
+            z-index: 1000;
+            font-family: system-ui, Arial, sans-serif;
+            color: #ecf0f1;
+            text-align: center;
+            backdrop-filter: blur(4px);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity .4s ease;
+        }
+        #gameOverOverlay.active { opacity: 1; pointer-events: all; }
+        #gameOverOverlay h1 {
+            margin: 0;
+            font-size: 72px;
+            letter-spacing: 3px;
+            background: linear-gradient(90deg,#ff6b6b,#f1c40f,#2ecc71);
+            background-clip: text;
+            -webkit-background-clip: text;
+            color: transparent;
+            animation: gameOverPulse 3s ease-in-out infinite;
+            text-shadow: 0 0 15px rgba(255,255,255,0.15);
+        }
+        @keyframes gameOverPulse { 0%,100% { transform: scale(1);} 50% { transform: scale(1.05);} }
+        #gameOverOverlay .final-stats { font-size: 18px; line-height: 1.4; opacity: .9; }
+        #restartButton {
+            padding: 14px 36px;
+            font-size: 20px;
+            font-weight: 600;
+            border: none;
+            border-radius: 14px;
+            cursor: pointer;
+            background: linear-gradient(45deg,#3498db,#9b59b6);
+            color: #fff;
+            box-shadow: 0 6px 18px rgba(0,0,0,0.4);
+            transition: transform .2s ease, box-shadow .2s ease;
+        }
+        #restartButton:hover { transform: translateY(-4px) scale(1.04); box-shadow: 0 10px 28px rgba(0,0,0,0.55); }
+        #restartButton:active { transform: translateY(1px) scale(.98); }
+
+    /* Onboarding ek CSS */
+    #onboardingOverlay { position:absolute; inset:0; background:rgba(0,0,0,0.78); backdrop-filter:blur(4px); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:22px; color:#ecf0f1; font-family:system-ui,Arial; text-align:center; z-index:950; opacity:1; transition:opacity .4s ease; }
+    #onboardingOverlay.hidden { opacity:0; pointer-events:none; }
+    #onboardingOverlay h2 { margin:0 0 4px; font-size:48px; letter-spacing:1px; }
+    #onboardingOverlay ol { margin:0; padding-left:22px; max-width:520px; text-align:left; line-height:1.5; font-size:17px; }
+    #waveHint { display:none; font-size:12px; opacity:.8; margin-top:-4px; margin-bottom:8px; color:#ffd86b; text-align:center; font-weight:500; }
+
+        /* (Kaydet/Yükle sistemi isteğe bağlı olarak kaldırıldı) */
+        .tower-level-badge {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            background: linear-gradient(45deg,#f1c40f,#f39c12);
+            color: #1b1b1b;
+            font-size: 12px;
+            font-weight: bold;
+            padding: 2px 6px;
+            border-radius: 12px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+            border: 2px solid #ffffff33;
+            font-family: system-ui, Arial;
+            pointer-events: none;
+            z-index: 20;
+        }
+        .tower-level-badge[data-lv="2"] { background: linear-gradient(45deg,#9b59b6,#8e44ad); color:#fff; }
+        .tower-level-badge[data-lv="3"] { background: linear-gradient(45deg,#e74c3c,#c0392b); color:#fff; }
 
         @keyframes towerPulse {
             0%, 100% { transform: scale(1); }
@@ -232,14 +284,14 @@
 
         /* Kenar Çubuğu (UI Paneli) */
         .sidebar {
-            width: 280px; /* Sabit genişlik */
+            width: 260px; /* Biraz daraltıldı */
             background: linear-gradient(180deg, #2c3e50 0%, #34495e 100%);
-            padding: 20px;
+            padding: 14px 14px 10px;
             border-left: 3px solid #3498db;
             overflow-y: auto; /* İçerik taşarsa kaydırma çubuğu */
             display: flex;
             flex-direction: column;
-            justify-content: space-between; /* İçerikleri dikeyde yayar */
+            gap: 12px;
         }
 
         .sidebar h2 {
@@ -253,10 +305,10 @@
         /* İstatistik Paneli */
         .stats-panel, .tower-shop, .game-controls, .player-status {
             background: rgba(0,0,0,0.3);
-            padding: 15px;
+            padding: 12px 12px 10px;
             border-radius: 10px;
-            margin-bottom: 20px;
-            border: 1px solid rgba(52, 152, 219, 0.3);
+            margin: 0;
+            border: 1px solid rgba(52, 152, 219, 0.25);
         }
 
         .stat-item {
@@ -281,8 +333,8 @@
 
         .tower-button {
             width: 100%;
-            padding: 12px;
-            margin-bottom: 10px;
+            padding: 10px;
+            margin-bottom: 6px;
             border: none;
             border-radius: 8px;
             cursor: pointer;
@@ -330,8 +382,8 @@
         /* Oyun Kontrol Butonları */
         .game-controls .control-button {
             width: 100%;
-            padding: 12px;
-            margin-bottom: 10px;
+            padding: 10px;
+            margin-bottom: 6px;
             border: none;
             border-radius: 8px;
             cursor: pointer;
@@ -452,6 +504,22 @@
         <div class="game-board" id="gameBoard">
             <div id="towerActionsMenu" class="tower-actions" style="display: none;">
                 </div>
+            <div id="gameOverOverlay">
+                <h1>GAME OVER</h1>
+                <div class="final-stats" id="finalStats"></div>
+                <button id="restartButton" onclick="restartGameFromOverlay()">↻ Yeniden Başla</button>
+            </div>
+            <div id="onboardingOverlay" style="display:block;">
+                <h2>🎯 Nasıl Oynanır</h2>
+                <ol>
+                    <li>Sağ panelden bir kule seç.</li>
+                    <li>Yolun dışındaki kareye tıkla ve yerleştir.</li>
+                    <li>Dalga Başlat'a bas ve düşmanları yok et.</li>
+                    <li>Kuleye tıklayıp yükselt veya sat.</li>
+                    <li>Tüm canlar bitmeden dayan!</li>
+                </ol>
+                <button class="dismiss-guide" onclick="hideOnboarding()" style="padding:12px 28px;font-size:16px;font-weight:600;border:none;border-radius:12px;background:linear-gradient(45deg,#27ae60,#2ecc71);color:#fff;cursor:pointer;">Hazırım!</button>
+            </div>
         </div>
 
         <div class="sidebar">
@@ -468,12 +536,23 @@
                         <span class="stat-value" id="lives">20</span>
                     </div>
                     <div class="stat-item">
-                        <span>📊 Skor:</span>
-                        <span class="stat-value" id="score">0</span>
-                    </div>
-                    <div class="stat-item">
                         <span>⚡ Dalga:</span>
                         <span class="stat-value" id="wave">1</span>
+                    </div>
+                    <div class="stat-item">
+                        <span>🧟 Kalan:</span>
+                        <span class="stat-value" id="enemiesRemaining">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span>🏯 Kule:</span>
+                        <span class="stat-value" id="towerCount">0</span>
+                    </div>
+                    <div class="stat-item" style="border:none;">
+                        <span>🎯 İlerleme:</span>
+                        <span class="stat-value" id="waveProgressLabel">0%</span>
+                    </div>
+                    <div class="progress-wrapper" style="width:100%;height:10px;background:rgba(255,255,255,0.1);border-radius:6px;overflow:hidden;margin:4px 0 10px;">
+                        <div id="waveProgressBar" style="height:100%;width:0%;background:linear-gradient(90deg,#27ae60,#2ecc71);transition:width .3s ease;"></div>
                     </div>
                 </div>
 
@@ -498,12 +577,29 @@
                     <button class="control-button start-wave" onclick="startWave()">
                         🚀 Dalga Başlat
                     </button>
+                    <span id="waveHint">Önce en az bir kule yerleştir.</span>
+                    <button class="control-button" id="speedButton" style="background: linear-gradient(45deg,#16a085,#1abc9c);" onclick="cycleSpeed()">⏩ Hız: 1x</button>
                     <button class="control-button pause-game" onclick="togglePause(event)">
                         ⏸️ Duraklat
                     </button>
                     <button class="control-button" style="background: linear-gradient(45deg, #e74c3c, #c0392b); color: white;" onclick="restartGame()">
                         🔄 Yeniden Başla
                     </button>
+                    <button id="muteToggle" class="control-button" style="background: linear-gradient(45deg,#8e44ad,#9b59b6);" onclick="toggleMute()">🔊 Ses: Açık</button>
+                    <label style="display:flex;align-items:center;gap:8px;font-size:14px;margin-top:4px;user-select:none;">
+                        <input type="checkbox" id="autoNextWaveToggle" onchange="toggleAutoNextWave(event)" style="width:18px;height:18px;"> Otomatik Dalga
+                    </label>
+                </div>
+                <div class="stats-panel" id="performancePanel" style="margin-top:10px;">
+                    <div class="stat-item" style="border:none;display:flex;flex-direction:column;align-items:flex-start;gap:4px;width:100%;">
+                        <span style="font-size:13px;opacity:0.8;">FPS / Performans</span>
+                        <div style="display:flex;gap:12px;font-size:13px;flex-wrap:wrap;">
+                            <span>FPS: <strong id="fpsValue">0</strong></span>
+                            <span>Δms: <strong id="frameTime">0</strong></span>
+                            <span>Düşman: <strong id="enemyCount">0</strong></span>
+                            <span>Mermi: <strong id="projectileCount">0</strong></span>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -514,8 +610,16 @@
         const gameBoard = document.getElementById('gameBoard');
         const goldDisplay = document.getElementById('gold');
         const livesDisplay = document.getElementById('lives');
-        const scoreDisplay = document.getElementById('score');
-        const waveDisplay = document.getElementById('wave');
+    // Skor sistemi kaldırıldı
+    const waveDisplay = document.getElementById('wave');
+    const enemiesRemainingDisplay = document.getElementById('enemiesRemaining');
+    const towerCountDisplay = document.getElementById('towerCount');
+    const waveProgressBar = document.getElementById('waveProgressBar');
+    const waveProgressLabel = document.getElementById('waveProgressLabel');
+    const fpsValueEl = document.getElementById('fpsValue');
+    const frameTimeEl = document.getElementById('frameTime');
+    const enemyCountEl = document.getElementById('enemyCount');
+    const projectileCountEl = document.getElementById('projectileCount');
 
 
         const towerActionsMenu = document.getElementById('towerActionsMenu');
@@ -526,7 +630,7 @@
         let gameState = {
             gold: 600,
             lives: 20,
-            score: 0,
+            // score kaldırıldı
             wave: 1,
             enemies: [],
             towers: [],
@@ -534,9 +638,10 @@
             selectedTowerCost: 0,
             projectiles: [],
             isPaused: false,
-            powerUpInterval: null,
-            powerUpSpawnRate: 15000, // 15 saniyede bir power-up
             gameOver: false,
+            muted: false,
+            autoStartNextWave: false,
+            speedMultiplier: 1,
         };
 
         const towerCosts = {
@@ -577,10 +682,8 @@
         ];
 
         let numRows, numCols;
-        let animationFrameId;
-        let gameLoopInterval;
+    let animationFrameId;
         let lastWaveTime = 0;
-        const waveDelay = 5000; // Dalga başlangıçları arasındaki gecikme (ms)
 
         let audioSystem;
         let forbiddenPathCells = new Set(); // Yolun geçtiği yasaklı hücrelerin koordinatlarını tutacak
@@ -626,14 +729,31 @@
         function updateUI() {
             goldDisplay.textContent = gameState.gold;
             livesDisplay.textContent = gameState.lives;
-            scoreDisplay.textContent = gameState.score;
             waveDisplay.textContent = gameState.wave;
 
+            if (towerCountDisplay) towerCountDisplay.textContent = gameState.towers.length;
+            if (enemyCountEl) enemyCountEl.textContent = gameState.enemies.length;
+            if (projectileCountEl) projectileCountEl.textContent = gameState.projectiles.length;
 
+            if (typeof currentWaveTotal !== 'undefined') {
+                if (enemiesRemainingDisplay) {
+                    if (currentWaveTotal > 0) {
+                        const remainingActive = gameState.enemies.length;
+                        const remainingToSpawn = Math.max(0, currentWaveTotal - waveEnemySpawnIndex - currentWaveKilled);
+                        enemiesRemainingDisplay.textContent = remainingActive + remainingToSpawn;
+                    } else {
+                        enemiesRemainingDisplay.textContent = 0;
+                    }
+                }
+                if (waveProgressBar && waveProgressLabel) {
+                    const ratio = currentWaveTotal > 0 ? (currentWaveKilled / currentWaveTotal) : 0;
+                    waveProgressBar.style.width = (ratio * 100) + '%';
+                    waveProgressLabel.textContent = Math.round(ratio * 100) + '%';
+                }
+            }
 
-            // Kule butonlarını altın durumuna göre etkinleştir/devre dışı bırak
             document.querySelectorAll('.tower-button').forEach(button => {
-                const type = button.classList[1]; // archer, mage, cannon, ice
+                const type = button.classList[1];
                 const cost = towerCosts[type];
                 if (gameState.gold >= cost) {
                     button.removeAttribute('disabled');
@@ -750,7 +870,7 @@
             });
             event.currentTarget.classList.add('selected');
 
-            if (audioSystem) {
+            if (!gameState.muted && audioSystem) {
                 audioSystem.playSound(440, 0.1, 'square'); // Seçim sesi
             }
         }
@@ -763,7 +883,7 @@
                 // Bu hücrede zaten bir kule olup olmadığını kontrol et
                 const existingTower = gameState.towers.find(t => t.x === cellX && t.y === cellY);
                 if (existingTower) {
-                    console.log("Burada zaten bir kule var!");
+                    // Hücrede zaten kule var
                     return;
                 }
 
@@ -792,12 +912,15 @@
                     });
                     updateUI();
 
-                    if (audioSystem) {
+                    if (!gameState.muted && audioSystem) {
                         audioSystem.playSound(600, 0.1, 'triangle'); // Kule yerleştirme sesi
                     }
+                    const wh = document.getElementById('waveHint');
+                    if (wh) wh.style.display='none';
+                    if (document.getElementById('onboardingOverlay') && !document.getElementById('onboardingOverlay').classList.contains('hidden')) hideOnboarding();
                 } else {
-                    console.log("Yetersiz altın!");
-                    if (audioSystem) {
+                    // Yetersiz altın
+                    if (!gameState.muted && audioSystem) {
                         audioSystem.playSound(200, 0.2, 'sawtooth'); // Hata sesi
                     }
                 }
@@ -811,6 +934,14 @@
     towerDiv.style.top = `${tower.y + (gridSize - cellSize) / 2}px`;
     towerDiv.textContent = getTowerIcon(tower.type); // Kule ikonunu ayarla
     towerDiv.dataset.towerId = tower.id; // Kuleye ID atayın
+    
+        // Seviye rozeti
+        const levelBadge = document.createElement('div');
+        levelBadge.className = 'tower-level-badge';
+        levelBadge.textContent = 'Lv1';
+        levelBadge.setAttribute('data-lv','1');
+        towerDiv.appendChild(levelBadge);
+        tower.levelBadge = levelBadge;
     
     towerDiv.addEventListener('click', (e) => {
         e.stopPropagation(); // Olayın gameBoard'a yayılmasını engelle
@@ -888,7 +1019,7 @@
             sellButton.onclick = () => sellTower(tower, sellValue);
             towerActionsMenu.appendChild(sellButton);
 
-            if (audioSystem) {
+            if (!gameState.muted && audioSystem) {
                 audioSystem.playSound(500, 0.1, 'sine'); // Menü açılma sesi
             }
         }
@@ -917,13 +1048,19 @@
                     tower.rangeElement.style.top = `${tower.y + (cellSize / 2) - tower.range}px`;
                 }
 
+                // Seviye rozeti güncelle
+                if (tower.levelBadge) {
+                    tower.levelBadge.textContent = 'Lv' + tower.level;
+                    tower.levelBadge.setAttribute('data-lv', String(tower.level));
+                }
+
                 updateUI();
                 towerActionsMenu.style.display = 'none'; // Menüyü kapat
-                if (audioSystem) {
+                if (!gameState.muted && audioSystem) {
                     audioSystem.playSound(700, 0.1, 'square'); // Yükseltme sesi
                 }
             } else {
-                if (audioSystem) {
+                if (!gameState.muted && audioSystem) {
                     audioSystem.playSound(200, 0.2, 'sawtooth'); // Hata sesi
                 }
             }
@@ -936,7 +1073,7 @@
             if (tower.rangeElement) tower.rangeElement.remove();
             updateUI();
             towerActionsMenu.style.display = 'none'; // Menüyü kapat
-            if (audioSystem) {
+            if (!gameState.muted && audioSystem) {
                 audioSystem.playSound(300, 0.1, 'sine'); // Satış sesi
             }
         }
@@ -947,8 +1084,14 @@
             currentActiveTower = null;
         });
 
-        function getDistance(x1, y1, x2, y2) {
-            return Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
+        function getDistance(x1, y1, x2, y2) { // Gerektiğinde gerçek mesafe (az kullanacağız)
+            return Math.sqrt((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1));
+        }
+
+        function getDistanceSquared(x1, y1, x2, y2) { // Karekök almadan kıyaslama için
+            const dx = x2 - x1;
+            const dy = y2 - y1;
+            return dx * dx + dy * dy;
         }
 
         function fireProjectile(tower, targetEnemy) {
@@ -991,7 +1134,7 @@
             gameBoard.appendChild(projectile.element);
             gameState.projectiles.push(projectile);
 
-            if (audioSystem) {
+            if (audioSystem && !gameState.muted) {
                 if (tower.type === 'archer') audioSystem.playSound(800, 0.05, 'sine');
                 if (tower.type === 'mage') audioSystem.playSound(600, 0.1, 'triangle');
                 if (tower.type === 'cannon') audioSystem.playSound(100, 0.2, 'sawtooth');
@@ -1011,9 +1154,9 @@
 
                 const dx = targetEnemyCenterX - projectile.x;
                 const dy = targetEnemyCenterY - projectile.y;
-                const distance = getDistance(projectile.x, projectile.y, targetEnemyCenterX, targetEnemyCenterY);
-
-                if (distance < projectile.speed) { // Mermi hedefe ulaştı
+                const distSq = dx * dx + dy * dy;
+                const speedStep = projectile.speed * (deltaTime / 16);
+                if (distSq <= speedStep * speedStep) { // Hedefe ulaştı
                     applyDamage(projectile.targetEnemy, projectile.damage, projectile.type);
 
                     if (projectile.type === 'cannon' && projectile.splashRadius > 0) {
@@ -1029,7 +1172,8 @@
                     projectile.element.remove();
                     return false;
                 } else {
-                    const moveAmount = projectile.speed * (deltaTime / 16); // Kare hızına göre ayarla
+                    const distance = Math.sqrt(distSq) || 1;
+                    const moveAmount = speedStep;
                     projectile.x += (dx / distance) * moveAmount;
                     projectile.y += (dy / distance) * moveAmount;
 
@@ -1043,7 +1187,7 @@
         function applyDamage(enemy, damage, type) {
             // Kaçınma şansı
             if (enemy.dodgeChance && Math.random() < enemy.dodgeChance) {
-                console.log("KAÇINDI!");
+                // Kaçındı efekti
                 createDamageText(enemy.x + 20, enemy.y, "KAÇINDI!", '#ffffff'); // Beyaz kaçınma yazısı
                 return;
             }
@@ -1051,7 +1195,7 @@
             // Zırh hesaplaması
             const effectiveDamage = Math.max(1, damage - enemy.armor); // En az 1 hasar versin
             enemy.hp -= effectiveDamage;
-            console.log(`Düşman ${enemy.id} ${effectiveDamage} hasar aldı. Kalan HP: ${enemy.hp}`);
+            // Hasar uygulandı
 
             createDamageText(enemy.x + 20, enemy.y - 10, `-${effectiveDamage}`, '#ff0000'); // Kırmızı hasar yazısı
 
@@ -1127,12 +1271,12 @@
                 if (enemy.healthBar) enemy.healthBar.remove();
             }
             gameState.gold += enemy.gold;
-            gameState.score += enemy.score;
             createParticleSystem(enemy.x + 20, enemy.y + 20, '#f7dc6f', 30); // Altın rengi partiküller
-            updateUI();
             gameState.enemies = gameState.enemies.filter(e => e.id !== enemy.id); // Diziden kaldır
+            if (currentWaveTotal > 0) currentWaveKilled++;
+            updateUI();
 
-            if (audioSystem) {
+            if (!gameState.muted && audioSystem) {
                 audioSystem.playSound(1000, 0.1, 'square'); // Düşman ölüm sesi
             }
         }
@@ -1154,7 +1298,7 @@
 
                 if (!nextPathPoint) { // Yola ulaştı
                     gameState.lives--;
-                    if (audioSystem) {
+                    if (!gameState.muted && audioSystem) {
                         audioSystem.playSound(50, 0.3, 'sine'); // Can kaybı sesi
                     }
                     if (enemy.element) {
@@ -1168,7 +1312,7 @@
 
                 const dx = nextPathPoint.x - enemy.x;
                 const dy = nextPathPoint.y - enemy.y;
-                const distanceToNextPoint = getDistance(enemy.x, enemy.y, nextPathPoint.x, nextPathPoint.y);
+                const distanceToNextPoint = Math.sqrt(dx * dx + dy * dy);
 
                 const moveAmount = enemy.speed * (deltaTime / 16); // Kare hızına göre ayarla
 
@@ -1182,8 +1326,11 @@
                 }
 
                 if (enemy.element) {
-                    enemy.element.style.left = `${enemy.x + (gridSize - enemy.element.offsetWidth) / 2}px`;
-                    enemy.element.style.top = `${enemy.y + (gridSize - enemy.element.offsetHeight) / 2}px`;
+                    // Transform denemesi görsel bozulma yaptıysa klasik left/top'a geri dön
+                    const ex = enemy.x + (gridSize - enemy.element.offsetWidth) / 2;
+                    const ey = enemy.y + (gridSize - enemy.element.offsetHeight) / 2;
+                    enemy.element.style.left = ex + 'px';
+                    enemy.element.style.top = ey + 'px';
                 }
             });
         }
@@ -1279,32 +1426,45 @@
         let waveEnemySpawnIndex = 0;
         let waveSpawnInterval;
         let currentWaveEnemies = [];
+    let currentWaveTotal = 0;
+    let currentWaveKilled = 0;
+    let fpsLastSample = performance.now();
+    let framesSinceSample = 0;
 
         function startWave() {
             if (gameState.isPaused || gameState.gameOver) return;
-
-            if (gameState.enemies.length > 0) {
-                console.log("Mevcut düşmanlar bitmeden yeni dalga başlatılamaz.");
+            if (gameState.enemies.length > 0) return; // Mevcut düşmanlar varken başlatma
+            if (gameState.towers.length === 0) {
+                const wh = document.getElementById('waveHint');
+                if (wh) wh.textContent = 'Dalga başlamadan önce bir kule yerleştir!';
                 return;
+            }
+            const wh = document.getElementById('waveHint');
+            if (wh) wh.style.display = 'none';
+            if (document.getElementById('onboardingOverlay') && !document.getElementById('onboardingOverlay').classList.contains('hidden')) {
+                hideOnboarding();
             }
 
             gameState.wave++;
             currentWaveEnemies = getWaveEnemies(gameState.wave);
-
+            currentWaveTotal = currentWaveEnemies.length;
+            currentWaveKilled = 0;
             waveEnemySpawnIndex = 0;
 
-            // Düşmanları belli aralıklarla spawn et
+            const baseSpawn = 700;
+            const spawnDelay = baseSpawn / (gameState.speedMultiplier || 1);
             waveSpawnInterval = setInterval(() => {
                 if (waveEnemySpawnIndex < currentWaveEnemies.length) {
                     createEnemy(currentWaveEnemies[waveEnemySpawnIndex]);
                     waveEnemySpawnIndex++;
+                    updateUI();
                 } else {
                     clearInterval(waveSpawnInterval);
                 }
-            }, 700); // Her 700ms'de bir düşman spawn et
+            }, spawnDelay);
 
             updateUI();
-            if (audioSystem) {
+            if (!gameState.muted && audioSystem) {
                 audioSystem.playSound(650, 0.2, 'sine'); // Dalga başlangıç sesi
             }
         }
@@ -1317,23 +1477,38 @@
 
             const deltaTime = timestamp - lastWaveTime;
             lastWaveTime = timestamp;
+            const scaled = deltaTime * (gameState.speedMultiplier || 1);
 
-            updateTowers(deltaTime);
-            updateEnemies(deltaTime);
-            updateProjectiles(deltaTime);
+            updateTowers(scaled);
+            updateEnemies(scaled);
+            updateProjectiles(scaled);
 
             if (gameState.lives <= 0) {
                 endGame();
             }
 
             if (gameState.enemies.length === 0 && waveEnemySpawnIndex >= currentWaveEnemies.length && gameState.wave > 0) {
-                // Eğer dalga bittiyse ve yeni dalga başlamak için belirli bir süre geçtiyse otomatik olarak başla
-                if (timestamp - (waveSpawnInterval ? waveSpawnInterval.lastExecutionTime : 0) > waveDelay) {
-                    // Bu kısım otomatik dalga başlangıcı için, isterseniz kaldırabilirsiniz.
-                    // startWave();
+                if (currentWaveTotal > 0) {
+                    currentWaveTotal = 0;
+                    currentWaveKilled = 0;
+                    updateUI();
+                    if (gameState.autoStartNextWave) {
+                        startWave();
+                    }
                 }
             }
             animationFrameId = requestAnimationFrame(gameLoop);
+
+            // FPS hesaplama
+            framesSinceSample++;
+            if (timestamp - fpsLastSample >= 1000) {
+                const elapsed = timestamp - fpsLastSample;
+                const fps = framesSinceSample * 1000 / elapsed;
+                if (fpsValueEl) fpsValueEl.textContent = fps.toFixed(0);
+                if (frameTimeEl) frameTimeEl.textContent = (elapsed / framesSinceSample).toFixed(1);
+                fpsLastSample = timestamp;
+                framesSinceSample = 0;
+            }
         }
 
         function togglePause(event) {
@@ -1342,12 +1517,13 @@
             if (gameState.isPaused) {
                 cancelAnimationFrame(animationFrameId);
                 clearInterval(waveSpawnInterval);
-                clearInterval(gameState.powerUpInterval);
-                console.log("Oyun Duraklatıldı.");
+                // Oyun duraklatıldı
             } else {
                 lastWaveTime = performance.now(); // Duraklatmadan sonra zamanı sıfırla
                 animationFrameId = requestAnimationFrame(gameLoop);
                 if (waveEnemySpawnIndex < currentWaveEnemies.length) { // Dalga yarım kaldıysa devam ettir
+                    const baseSpawn = 700;
+                    const spawnDelay = baseSpawn / (gameState.speedMultiplier || 1);
                     waveSpawnInterval = setInterval(() => {
                         if (waveEnemySpawnIndex < currentWaveEnemies.length) {
                             createEnemy(currentWaveEnemies[waveEnemySpawnIndex]);
@@ -1355,15 +1531,11 @@
                         } else {
                             clearInterval(waveSpawnInterval);
                         }
-                    }, 700);
+                    }, spawnDelay);
                 }
-                // Power-up aralığını tekrar başlat
-                if (!gameState.powerUpInterval) {
-                    gameState.powerUpInterval = setInterval(createPowerUp, gameState.powerUpSpawnRate);
-                }
-                console.log("Oyun Devam Ediyor.");
+                // Oyun devam ediyor
             }
-            if (audioSystem) {
+            if (!gameState.muted && audioSystem) {
                 audioSystem.playSound(550, 0.1, 'sine'); // Duraklatma sesi
             }
         }
@@ -1378,13 +1550,11 @@
             document.querySelectorAll('.path').forEach(p => p.remove());
             document.querySelectorAll('.explosion').forEach(e => e.remove());
             document.querySelectorAll('.damage-text').forEach(d => d.remove());
-            document.querySelectorAll('.power-up').forEach(p => p.remove());
+            // Eski power-up sistemi kaldırıldı
 
             // Tüm zamanlayıcıları temizle
             cancelAnimationFrame(animationFrameId);
-            clearInterval(gameLoopInterval); // Eğer kullanılıyorsa
             clearInterval(waveSpawnInterval);
-            clearInterval(gameState.powerUpInterval);
 
             // Oyun durumunu sıfırla
             gameState = {
@@ -1398,9 +1568,10 @@
                 selectedTowerCost: 0,
                 projectiles: [],
                 isPaused: false,
-                powerUpInterval: null,
-                powerUpSpawnRate: 15000,
                 gameOver: false,
+                muted: gameState.muted || false,
+                autoStartNextWave: gameState.autoStartNextWave || false,
+                speedMultiplier: gameState.speedMultiplier || 1,
             };
 
             // UI'ı güncelle
@@ -1414,17 +1585,21 @@
             // Yeni dalga için hazırlık
             waveEnemySpawnIndex = 0;
             currentWaveEnemies = []; // Dalga başlangıcı butonu ile başlasın
+            currentWaveTotal = 0;
+            currentWaveKilled = 0;
 
             // Oyun döngüsünü başlat
             lastWaveTime = performance.now();
             animationFrameId = requestAnimationFrame(gameLoop);
-            // Power-up aralığını tekrar başlat
-            gameState.powerUpInterval = setInterval(createPowerUp, gameState.powerUpSpawnRate);
-
-            if (audioSystem) {
+            // Eski power-up sistemi kaldırıldı
+            if (!gameState.muted && audioSystem) {
                 audioSystem.playSound(750, 0.2, 'square'); // Oyun yeniden başlama sesi
             }
-            console.log("Oyun Yeniden Başlatıldı.");
+            // Oyun yeniden başlatıldı
+            // Onboarding'i yeniden göster
+            showOnboarding();
+            const whMsg = document.getElementById('waveHint');
+            if (whMsg) { whMsg.style.display='block'; whMsg.textContent='Önce en az bir kule yerleştir.'; }
         }
 
 
@@ -1432,29 +1607,73 @@
             gameState.gameOver = true;
             cancelAnimationFrame(animationFrameId);
             clearInterval(waveSpawnInterval);
-            clearInterval(gameState.powerUpInterval);
+            showGameOver();
 
-
-
-            if (audioSystem) {
+            if (!gameState.muted && audioSystem) {
                 audioSystem.playSound(100, 0.5, 'triangle'); // Oyun bitti sesi
             }
-            console.log("Oyun Bitti.");
+            // Oyun bitti
+        }
+
+        function showGameOver() {
+            const overlay = document.getElementById('gameOverOverlay');
+            if (!overlay) return;
+            const stats = document.getElementById('finalStats');
+            stats.innerHTML = `🏅 Dalga: <strong>${gameState.wave}</strong><br>💰 Altın: <strong>${gameState.gold}</strong>`;
+            overlay.classList.add('active');
+        }
+
+        function hideGameOver() {
+            const overlay = document.getElementById('gameOverOverlay');
+            if (overlay) overlay.classList.remove('active');
+        }
+
+        function restartGameFromOverlay() {
+            hideGameOver();
+            restartGame();
+        }
+
+        function cycleSpeed() {
+            if (gameState.speedMultiplier === 1) gameState.speedMultiplier = 2;
+            else if (gameState.speedMultiplier === 2) gameState.speedMultiplier = 3;
+            else gameState.speedMultiplier = 1;
+            const btn = document.getElementById('speedButton');
+            if (btn) btn.textContent = `⏩ Hız: ${gameState.speedMultiplier}x`;
+            // Aktif dalga spawn interval varsa güncelle
+            if (waveSpawnInterval && waveEnemySpawnIndex < currentWaveEnemies.length) {
+                clearInterval(waveSpawnInterval);
+                const baseSpawn = 700;
+                const spawnDelay = baseSpawn / (gameState.speedMultiplier || 1);
+                waveSpawnInterval = setInterval(() => {
+                    if (waveEnemySpawnIndex < currentWaveEnemies.length) {
+                        createEnemy(currentWaveEnemies[waveEnemySpawnIndex]);
+                        waveEnemySpawnIndex++;
+                        updateUI();
+                    } else {
+                        clearInterval(waveSpawnInterval);
+                    }
+                }, spawnDelay);
+            }
         }
 
 
-        function updateTowers(deltaTime) {
-            gameState.towers.forEach(tower => {
+        let towerBatchFlip = false;
+        function updateTowers(deltaTime) { // Kuleleri iki batch'e böl (frame alternation)
+            towerBatchFlip = !towerBatchFlip;
+            const len = gameState.towers.length;
+            const start = towerBatchFlip ? 0 : Math.floor(len / 2);
+            const end = towerBatchFlip ? Math.floor(len / 2) : len;
+            for (let i = start; i < end; i++) {
+                const tower = gameState.towers[i];
                 tower.attackTimer += deltaTime;
-
                 if (tower.attackTimer >= tower.fireRate) {
-                    let targetEnemy = findTarget(tower);
+                    const targetEnemy = findTarget(tower);
                     if (targetEnemy) {
                         fireProjectile(tower, targetEnemy);
-                        tower.attackTimer = 0; // Atış zamanlayıcısını sıfırla
+                        tower.attackTimer = 0;
                     }
                 }
-            });
+            }
         }
 
         function findTarget(tower) {
@@ -1468,15 +1687,19 @@
                 if (enemy.hp <= 0 || !enemy.element) return;
                 const enemyCenterX = enemy.x + enemy.element.offsetWidth / 2;
                 const enemyCenterY = enemy.y + enemy.element.offsetHeight / 2;
-                const distance = getDistance(towerCenterX, towerCenterY, enemyCenterX, enemyCenterY);
-                if (distance <= tower.range) {
+                const distSq = getDistanceSquared(towerCenterX, towerCenterY, enemyCenterX, enemyCenterY);
+                if (distSq <= tower.range * tower.range) {
                     // Yol üzerindeki ilerleme: önce pathIndex, eşitse segmentteki ilerleme oranı
                     let progress = enemy.pathIndex;
                     const nextPoint = pathPoints[enemy.pathIndex + 1];
                     const currPoint = pathPoints[enemy.pathIndex];
                     if (nextPoint && currPoint) {
-                        const totalSeg = getDistance(currPoint.x, currPoint.y, nextPoint.x, nextPoint.y);
-                        const currSeg = getDistance(enemy.x, enemy.y, nextPoint.x, nextPoint.y);
+                        const segDx = nextPoint.x - currPoint.x;
+                        const segDy = nextPoint.y - currPoint.y;
+                        const totalSeg = Math.sqrt(segDx * segDx + segDy * segDy);
+                        const curDx = nextPoint.x - enemy.x;
+                        const curDy = nextPoint.y - enemy.y;
+                        const currSeg = Math.sqrt(curDx * curDx + curDy * curDy);
                         if (totalSeg > 0) {
                             progress += 1 - (currSeg / totalSeg);
                         }
@@ -1544,7 +1767,7 @@
             }
         }
 
-    // Power-up fonksiyonu ve animasyonu kaldırıldı (güvenlik ve istek gereği)
+    // (Power-up sistemi kaldırıldı)
 
 
         // Oyun Başlangıcı
@@ -1560,7 +1783,11 @@
             updateUI();
             lastWaveTime = performance.now();
             animationFrameId = requestAnimationFrame(gameLoop);
-            // Power-up kaldırıldı, interval başlatılmıyor
+            // Power-up sistemi yok
+            adaptLayout();
+            showOnboarding();
+            const whMsg0 = document.getElementById('waveHint');
+            if (whMsg0 && gameState.towers.length === 0) whMsg0.style.display='block';
         });
 
         // Pencere yeniden boyutlandırıldığında ızgarayı ve yolu yeniden çiz
@@ -1571,7 +1798,49 @@
             numRows = Math.floor(gameBoard.offsetHeight / gridSize);
             createGrid(); // grid-cell'leri yeniden oluştur
             drawPath(); // yolu yeniden çiz
+            adaptLayout();
         });
+
+        function toggleMute() {
+            gameState.muted = !gameState.muted;
+            const btn = document.getElementById('muteToggle');
+            if (btn) btn.textContent = gameState.muted ? '🔇 Ses: Kapalı' : '🔊 Ses: Açık';
+        }
+
+        // Onboarding göster/gizle fonksiyonları
+        function showOnboarding() {
+            const ob = document.getElementById('onboardingOverlay');
+            if (ob) ob.classList.remove('hidden');
+        }
+        function hideOnboarding() {
+            const ob = document.getElementById('onboardingOverlay');
+            if (ob) ob.classList.add('hidden');
+        }
+
+        function toggleAutoNextWave(e) {
+            gameState.autoStartNextWave = e.target.checked;
+        }
+
+        function adaptLayout() {
+            const baseWidth = 1000;
+            const baseHeight = 500;
+            const availableWidth = window.innerWidth - 300; // sidebar tahmini
+            const availableHeight = window.innerHeight - 40;
+            let scale = Math.min(availableWidth / baseWidth, availableHeight / baseHeight);
+            if (window.innerWidth < 1100) {
+                scale = Math.min(window.innerWidth * 0.95 / baseWidth, window.innerHeight * 0.55 / baseHeight);
+            }
+            if (scale < 1) {
+                gameBoard.style.transformOrigin = 'top left';
+                gameBoard.style.transform = `scale(${scale})`;
+            } else {
+                gameBoard.style.transform = 'none';
+            }
+        }
+
+        /* Kaydet/Yükle kod blokları tamamen kaldırıldı */
+
+        /* Kaydet/Yükle tamamen kaldırıldı: localStorage erişimi yok. */
 
     </script>
 </body>
